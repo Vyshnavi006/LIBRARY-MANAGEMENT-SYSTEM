@@ -1,0 +1,269 @@
+package library;
+import javax.swing.*;
+import java.util.ArrayList;
+import java.awt.EventQueue;
+import java.awt.event.*;
+import java.io.*;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.concurrent.TimeUnit;
+public class Library {
+    private JFrame frame;
+    private HashSet<String> lentBookIds
+    private ArrayList<String> books; 
+    public static void main(String[] args) {
+        EventQueue.invokeLater(new Runnable() {
+            public void run() {
+                try {
+                    Library window = new Library();
+                    window.frame.setVisible(true);
+                } catch (Exception e) {
+                    e.printStackTrace();                                                                    
+                                                                                                                          6
+                }
+            }
+        });
+    }
+    public Library() {
+        initialize();
+        lentBookIds = new HashSet<>(); 
+        books = new ArrayList<>(); 
+    }
+    private void initialize() {
+        frame = new JFrame();
+        frame.setBounds(100, 100, 450, 300);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.getContentPane().setLayout(null);
+        JButton btnAddBooks = new JButton("Add Books");
+        btnAddBooks.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                String bookId = JOptionPane.showInputDialog(frame, "Enter Book ID:");
+                String bookName = JOptionPane.showInputDialog(frame, "Enter Book Name:");
+                String author = JOptionPane.showInputDialog(frame, "Enter Author:");
+                String priceStr = JOptionPane.showInputDialog(frame, "Enter Price:");                                                                                                           7   
+                if (bookId != null && !bookId.isEmpty() && bookName != null && !bookName.isEmpty() &&                                                                             
+                        author != null && !author.isEmpty() && priceStr != null && !priceStr.isEmpty()) {
+                    try {
+                        double price = Double.parseDouble(priceStr);
+                        try (PrintWriter writer = new PrintWriter(new FileWriter("books.txt", true))) {
+                            writer.println(bookId + "," + bookName + "," + author + "," + price);
+                            writer.close();
+                            JOptionPane.showMessageDialog(frame, "Book added successfully!");
+                            books.add(bookId + "," + bookName + "," + author + "," + price); // Add book details to ArrayList
+                        } catch (IOException ex) {
+                            JOptionPane.showMessageDialog(frame, "Error occurred while adding book to file: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                        }
+                    } catch (NumberFormatException ex) {
+                        JOptionPane.showMessageDialog(frame, "Invalid price format!", "Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                } else {
+                    JOptionPane.showMessageDialog(frame, "Please fill in all fields!", "Error", JOptionPane.ERROR_MESSAGE);
+                 }                                                                                                                         8
+
+                                                                                                                          
+            }
+        });
+        btnAddBooks.setBounds(29, 36, 115, 23);
+        frame.getContentPane().add(btnAddBooks);
+        JButton btnNewButton_1 = new JButton("Lend Books");
+        btnNewButton_1.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {  
+                String bookId = JOptionPane.showInputDialog(frame, "Enter Book ID:");
+                if (bookId != null && !bookId.isEmpty()) {
+                    boolean bookFound = false;
+                    try (BufferedReader reader = new BufferedReader(new FileReader("books.txt"))) {
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            String[] bookDetails = line.split(",");
+                            if (bookDetails[0].equals(bookId)) {
+                                bookFound = true;
+                                break;
+                            }
+                        }
+                        if (bookFound) {                                                                        9
+                            String readerName = JOptionPane.showInputDialog(frame, "Enter Reader's Name:");
+                            String lendDate = JOptionPane.showInputDialog(frame, "Enter Lending Date (YYYY-MM-DD):");                                                      
+                            if (readerName != null && !readerName.isEmpty() && lendDate != null && !lendDate.isEmpty()) {
+                                try (PrintWriter writer = new PrintWriter(new FileWriter("lending_records.txt", true))) {
+                                    writer.println(bookId + "," + readerName + "," + lendDate);
+                                    writer.close();
+                                    lentBookIds.add(bookId); 
+                                    JOptionPane.showMessageDialog(frame, "Book lent successfully!");
+                                } catch (IOException ex) {
+                                    JOptionPane.showMessageDialog(frame, "Error occurred while lending book: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                                }
+                            } else {
+                                JOptionPane.showMessageDialog(frame, "Please fill in all fields!", "Error", JOptionPane.ERROR_MESSAGE);
+                            }
+                        } else {
+                            JOptionPane.showMessageDialog(frame, "Book with ID " + bookId + " not found in library!", "Error", JOptionPane.ERROR_MESSAGE);
+                        }
+                    } catch (IOException ex) {                                                           10
+                        JOptionPane.showMessageDialog(frame, "Error occurred while checking book availability: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                    }                                                                                                   
+                } else {
+                    JOptionPane.showMessageDialog(frame, "Please enter the book ID!", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+        btnNewButton_1.setBounds(263, 36, 115, 23);
+        frame.getContentPane().add(btnNewButton_1);
+        JButton btnNewButton_2 = new JButton("Search Books");
+        btnNewButton_2.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                String bookId = JOptionPane.showInputDialog(frame, "Enter Book ID:");
+                if (bookId != null && !bookId.isEmpty()) {
+                    String bookDetails = findBookById(bookId);
+                    if (bookDetails != null) {
+                        JOptionPane.showMessageDialog(frame, "Book Details:\n" + bookDetails, "Book Found", JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(frame, "Book with ID " + bookId + " not found.", "Book Not Found", JOptionPane.INFORMATION_MESSAGE);
+                    }                                                                                                    11
+                } else {
+                    JOptionPane.showMessageDialog(frame, "Please enter a book ID.", "Error", JOptionPane.ERROR_MESSAGE);
+                }                                                                                                                      
+            }
+        });
+        btnNewButton_2.setBounds(29, 97, 115, 23);
+        frame.getContentPane().add(btnNewButton_2);
+
+        JButton btnNewButton_3 = new JButton("View Books");
+        btnNewButton_3.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                StringBuilder bookList = new StringBuilder();
+                int availableBooksCount = 0;
+                for (String book : books) {
+                    String[] bookDetails = book.split(",");
+                    String bookId = bookDetails[0];
+                    if (!lentBookIds.contains(bookId)) {
+                        availableBooksCount++;
+                        bookList.append("ID: ").append(bookDetails[0]).append("\n");
+                        bookList.append("Name: ").append(bookDetails[1]).append("\n");
+                        bookList.append("Author: ").append(bookDetails[2]).append("\n");
+                        bookList.append("Price: ").append(bookDetails[3]).append("\n\n");                                                    12
+                    }
+                }
+                if (availableBooksCount > 0) {                                                       
+                    JOptionPane.showMessageDialog(frame, "Number of Available Books: " + availableBooksCount + "\n\n" + bookList.toString(), "Available Books in Library", JOptionPane.INFORMATION_MESSAGE);
+                } else {
+                    JOptionPane.showMessageDialog(frame, "No available books in the library.", "No Books Available", JOptionPane.INFORMATION_MESSAGE);
+                }
+            }
+        });
+        btnNewButton_3.setBounds(29, 154, 115, 23);
+        frame.getContentPane().add(btnNewButton_3);
+        JButton btnReturnBooks = new JButton("Return Books");
+        btnReturnBooks.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                String bookId = JOptionPane.showInputDialog(frame, "Enter Book ID to Return:");
+                if (bookId != null && !bookId.isEmpty()) {
+                    // Check if the book was previously lent
+                    if (lentBookIds.contains(bookId)) {
+                        String returnDateString = JOptionPane.showInputDialog(frame, "Enter Date of Returning (YYYY-MM-DD):");
+                                                                                                                         13
+                        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                        dateFormat.setLenient(false);
+                        try {                                                                                          
+                            Date returnDate = dateFormat.parse(returnDateString);
+                            Date currentDate = new Date();
+                            long differenceInDays = TimeUnit.DAYS.convert(returnDate.getTime() - currentDate.getTime(), TimeUnit.MILLISECONDS);
+                            if (differenceInDays > 7) {
+                                int extraDays = (int) (differenceInDays - 7);
+                                int extraCharge = extraDays * 10;
+                                JOptionPane.showMessageDialog(frame, "You have to pay extra Rs. " + extraCharge + " for " + extraDays + " extra days.", "Extra Charges", JOptionPane.WARNING_MESSAGE);
+                            }
+                            lentBookIds.remove(bookId);
+                            JOptionPane.showMessageDialog(frame, "Book returned successfully!");
+                        } catch (Exception ex) {
+                            JOptionPane.showMessageDialog(frame, "Invalid date format. Please enter date in YYYY-MM-DD format.", "Error", JOptionPane.ERROR_MESSAGE);
+                        }
+                    } else {
+                        JOptionPane.showMessageDialog(frame, "Book with ID " + bookId + " was not lent!", "Error", JOptionPane.ERROR_MESSAGE);
+                    }                                                                                                      14
+                } else {
+                    JOptionPane.showMessageDialog(frame, "Please enter the book ID!", "Error", JOptionPane.ERROR_MESSAGE);
+                }                                                                                                     
+            }
+        });
+        btnReturnBooks.setBounds(263, 97, 115, 23);
+        frame.getContentPane().add(btnReturnBooks); // Add the button to the frame
+        JButton btnDisplay = new JButton("View lent books");
+        btnDisplay.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                StringBuilder lentBookList = new StringBuilder();
+                int lentBooksCount = 0;
+                for (String book : books) {
+                    String[] bookDetails = book.split(",");
+                    String bookId = bookDetails[0];
+                    if (lentBookIds.contains(bookId)) {
+                        lentBooksCount++;
+                        lentBookList.append("ID: ").append(bookDetails[0]).append("\n");
+                        lentBookList.append("Name: ").append(bookDetails[1]).append("\n");
+                        lentBookList.append("Author: ").append(bookDetails[2]).append("\n");
+                        lentBookList.append("Price: ").append(bookDetails[3]).append("\n\n");                                                         15
+                    }
+                }
+                if (lentBooksCount > 0) {                                                              
+                    JOptionPane.showMessageDialog(frame, "Number of Lent Books: " + lentBooksCount + "\n\n" + lentBookList.toString(), "Lent Books in Library", JOptionPane.INFORMATION_MESSAGE);
+                } else {
+                    JOptionPane.showMessageDialog(frame, "No books are currently lent.", "No Lent Books", JOptionPane.INFORMATION_MESSAGE);
+                }
+            }
+        });
+        btnDisplay.setBounds(263, 154, 115, 23);
+        frame.getContentPane().add(btnDisplay);
+        
+        JButton btnDisplay_2 = new JButton("Display");
+        btnDisplay_2.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                StringBuilder bookList = new StringBuilder("<html>");
+                boolean booksAvailable = false;
+                for (String book : books) {
+                    String[] bookDetails = book.split(",");
+                    String bookId = bookDetails[0];
+
+                    if (lentBookIds.contains(bookId)) {                                              16
+                        bookList.append("<b>Lent Book:</b><br>");
+                    } else {
+                        booksAvailable = true;                                                            
+                    }
+                    bookList.append("<b>ID:</b> ").append(bookDetails[0]).append("<br>");
+                    bookList.append("<b>Name:</b> ").append(bookDetails[1]).append("<br>");
+                    bookList.append("<b>Author:</b> ").append(bookDetails[2]).append("<br>");
+                    bookList.append("<b>Price:</b> ").append(bookDetails[3]).append("<br><br>");
+                }
+                bookList.append("</html>");
+                if (!booksAvailable) {
+                    bookList = new StringBuilder("No books available.");
+                }
+                JOptionPane.showMessageDialog(frame, bookList.toString(), "Books in Library", JOptionPane.INFORMATION_MESSAGE);
+            }
+        });
+        btnDisplay_2.setBounds(152, 210, 115, 23);
+        frame.getContentPane().add(btnDisplay_2);
+    }
+    private String findBookById(String bookId) {
+        for (String book : books) {                                                                          17
+
+            String[] bookDetails = book.split(",");
+            if (bookDetails[0].equals(bookId)) {
+                return "ID: " + bookDetails[0] + "\nName: " + bookDetails[1] + "\nAuthor: " + bookDetails[2] + "\nPrice: " + bookDetails[3];                        
+            }
+        }
+        return null;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+                                                                                                 18
+                  
